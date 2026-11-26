@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,6 +8,7 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { TiltCard3D } from "@/components/ui/TiltCard3D";
 import { MagneticWrapper } from "@/components/ui/MagneticWrapper";
 import { SplitRevealText } from "@/components/motion/SplitRevealText";
+import { useAdminStore, defaultAdminData, type AdminItem } from "@/lib/adminStore";
 
 type TeamMember = {
   id: string;
@@ -15,36 +17,51 @@ type TeamMember = {
   description: string;
   focus: string[];
   image_url: string;
+  initials?: string;
   linkedin_url?: string;
   whatsapp_url?: string;
 };
 
-const members: TeamMember[] = [
-  {
-    id: "1",
-    name: "Sanjay Kumar K",
-    role: "Founder & Chief Design Officer (CDO)",
-    description:
-      "Leads product strategy, UI/UX architecture, and brand direction across Zeony Technologies' client engagements and proprietary SaaS platforms, ensuring every deliverable balances aesthetic clarity with usability.",
-    focus: ["Product Strategy", "UI/UX Architecture", "Brand Systems"],
-    image_url: "/img/sanjay.jpg",
-    linkedin_url: "https://in.linkedin.com/company/zeony-technologies29",
-    whatsapp_url: "https://wa.me/916382654365",
-  },
-  {
-    id: "2",
-    name: "Vinod Kumar MM",
-    role: "Founder & Chief Technology Officer (CTO)",
-    description:
-      "Directs technical architecture, cloud infrastructure, and full-stack software delivery. Specializes in scalable web systems, enterprise automation, and mentoring engineering talent through real-world production projects.",
-    focus: ["Cloud Architecture", "Full-Stack Systems", "Applied AI"],
-    image_url: "/img/vinod.jpg",
-    linkedin_url: "https://in.linkedin.com/company/zeony-technologies29",
-    whatsapp_url: "https://wa.me/916382654365",
-  },
-];
+function deriveInitials(name: string, explicitIcon?: string): string {
+  if (explicitIcon && explicitIcon.trim().length > 0) {
+    return explicitIcon.trim().slice(0, 3).toUpperCase();
+  }
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return (parts[0] || "ZM").slice(0, 2).toUpperCase();
+}
 
 export default function Team() {
+  const { items: adminTeamMembers, isLoaded } = useAdminStore("team_members");
+
+  const members: TeamMember[] = useMemo(() => {
+    const source: AdminItem[] =
+      isLoaded && adminTeamMembers.length > 0
+        ? adminTeamMembers
+        : (defaultAdminData.team_members as AdminItem[]);
+
+    return source.map((item, idx) => {
+      const isSanjay = item.title.toLowerCase().includes("sanjay");
+      const isVinod = item.title.toLowerCase().includes("vinod");
+
+      return {
+        id: item.id || String(idx),
+        name: item.title,
+        role: item.subtitle || "Leadership & Executive",
+        description: item.desc || "Executive member driving Zeony Technologies initiatives.",
+        focus: Array.isArray(item.features) && item.features.length > 0
+          ? item.features.filter(Boolean)
+          : ["Strategic Leadership", "Innovation", "Architecture"],
+        image_url: item.img || (isSanjay ? "/img/sanjay.jpg" : isVinod ? "/img/vinod.jpg" : ""),
+        initials: deriveInitials(item.title, item.icon),
+        linkedin_url: "https://in.linkedin.com/company/zeony-technologies29",
+        whatsapp_url: "https://wa.me/916382654365",
+      };
+    });
+  }, [adminTeamMembers, isLoaded]);
+
   return (
     <div className="bg-background min-h-screen pt-32 pb-24">
       <div className="container mx-auto px-6 lg:px-12">
@@ -130,15 +147,24 @@ export default function Team() {
                       </div>
                     </div>
 
-                    {/* Approved Portrait */}
-                    <div className="w-full sm:w-80 lg:w-84 shrink-0 relative aspect-square rounded-2xl overflow-hidden border border-border shadow-md">
-                      <Image
-                        src={member.image_url}
-                        alt={member.name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, 336px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
+                    {/* Portrait with WhatsApp circular framing or square image */}
+                    <div className="w-full sm:w-80 lg:w-84 shrink-0 relative aspect-square rounded-3xl overflow-hidden border border-border shadow-md bg-card/50 flex items-center justify-center p-4">
+                      {member.image_url ? (
+                        <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                          <Image
+                            src={member.image_url}
+                            alt={member.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 336px"
+                            className="object-cover group-hover:scale-105 transition-transform duration-700"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-primary to-cyan-500 text-white font-heading font-black text-4xl flex items-center justify-center shadow-2xl">
+                          {member.initials || "ZM"}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TiltCard3D>
