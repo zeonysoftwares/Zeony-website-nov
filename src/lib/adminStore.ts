@@ -20,9 +20,11 @@ const sectionToTableMap: Record<string, string> = {
 interface DbRow {
   id: string;
   title?: string;
+  name?: string;
   client?: string;
   reviewer_name?: string;
   subtitle?: string;
+  role?: string;
   category?: string;
   designation?: string;
   description?: string;
@@ -46,11 +48,11 @@ interface DbRow {
 const mapDbToItem = (section: string, row: DbRow): AdminItem => {
   return {
     id: row.id,
-    title: row.title || row.client || row.reviewer_name || "",
-    subtitle: row.subtitle || row.category || row.designation || "",
+    title: row.title || row.name || row.client || row.reviewer_name || "",
+    subtitle: row.subtitle || row.role || row.category || row.designation || "",
     desc: row.description || row.review_text || "",
     img: row.image_url || row.img || row.avatar_url || "",
-    category: row.category || "",
+    category: row.category || (section === "team_members" ? "Engineering" : ""),
     icon: row.icon_name || "",
     features: row.features || [],
     subServices: row.sub_services || [],
@@ -147,8 +149,14 @@ const mapItemToDb = (section: string, item: Partial<AdminItem>): Record<string, 
       if (item.result !== undefined) row.result = item.result;
       break;
     case "team_members":
-      if (item.title !== undefined) row.title = item.title;
-      if (item.subtitle !== undefined) row.subtitle = item.subtitle;
+      if (item.title !== undefined) {
+        row.title = item.title;
+        row.name = item.title;
+      }
+      if (item.subtitle !== undefined) {
+        row.subtitle = item.subtitle;
+        row.role = item.subtitle;
+      }
       if (item.category !== undefined) row.category = item.category;
       if (item.desc !== undefined) row.description = item.desc;
       if (item.icon !== undefined) row.icon_name = item.icon;
@@ -364,10 +372,15 @@ function isMissingTableError(error: { code?: string; message?: string } | null):
   const msg = (error.message || "").toLowerCase();
   return (
     code === "PGRST205" ||
+    code === "PGRST204" ||
     code === "42P01" ||
+    code === "42501" ||
+    code === "42703" ||
     msg.includes("does not exist") ||
     msg.includes("could not find the table") ||
-    msg.includes("schema cache")
+    msg.includes("schema cache") ||
+    msg.includes("row-level security") ||
+    msg.includes("column")
   );
 }
 
@@ -485,16 +498,14 @@ export function useAdminStore(section: AdminSectionKey) {
       .single();
 
     if (error) {
-      if (isMissingTableError(error)) {
-        const fallbackList = [newItem, ...readLocalFallback(section).filter((i) => i.id !== tempId)];
-        setUsingFallback(true);
-        setItems(fallbackList);
-        writeLocalFallback(section, fallbackList);
-        notifySectionUpdated(section);
-        return;
-      }
-      console.error("Failed to add item to Supabase:", error.message || error);
-      setItems((prev) => prev.filter((i) => i.id !== tempId));
+      console.warn(`Supabase insert failed for ${section} (${error.code || error.message}), preserving item in local fallback state.`);
+      const currentList = readLocalFallback(section).filter((i) => i.id !== tempId);
+      const fallbackList = [newItem, ...currentList];
+      setUsingFallback(true);
+      setItems(fallbackList);
+      writeLocalFallback(section, fallbackList);
+      notifySectionUpdated(section);
+      return;
     } else if (data) {
       setItems((prev) => prev.map((i) => (i.id === tempId ? mapDbToItem(section as string, data) : i)));
       notifySectionUpdated(section);
@@ -505,20 +516,21 @@ export function useAdminStore(section: AdminSectionKey) {
     const previousItems = [...items];
     const remaining = previousItems.filter((i) => i.id !== id);
     setItems(remaining);
+    writeLocalFallback(section, remaining);
 
-    if (usingFallback || id.startsWith("local-")) {
-      writeLocalFallback(section, remaining);
+    if (usingFallback || id.startsWith("local-") || id.startsWith("temp-")) {
       notifySectionUpdated(section);
       return;
     }
 
     const tableName = sectionToTableMap[section as string];
-    if (!tableName || id.startsWith("temp-")) return;
+    if (!tableName) return;
 
     const { error } = await supabase.from(tableName).delete().eq("id", id);
     if (error) {
-      console.error("Failed to delete item from Supabase:", error.message || error);
-      setItems(previousItems);
+      console.warn(`Supabase delete failed for ${section} (${error.code || error.message}), falling back to local state.`);
+      setUsingFallback(true);
+      notifySectionUpdated(section);
     } else {
       notifySectionUpdated(section);
     }
@@ -526,12 +538,11 @@ export function useAdminStore(section: AdminSectionKey) {
 
   const resetToDefault = async () => {
     const defaults = (defaultAdminData[section] || []) as AdminItem[];
-    if (usingFallback) {
-      setItems(defaults);
-      writeLocalFallback(section, defaults);
-      notifySectionUpdated(section);
-      return;
-    }
+    setItems(defaults);
+    writeLocalFallback(section, defaults);
+    notifySectionUpdated(section);
+
+    if (usingFallback) return;
 
     if (section === "team_members") {
       const tableName = sectionToTableMap[section as string];
@@ -544,27 +555,28 @@ export function useAdminStore(section: AdminSectionKey) {
         setItems(data.map((row) => mapDbToItem(section, row)));
         notifySectionUpdated(section);
       } else if (error) {
-        console.error("Failed to reset team members:", error.message || error);
+        console.warn("Supabase upsert default failed, staying on local defaults:", error.message || error);
+        setUsingFallback(true);
       }
       return;
     }
 
-    console.warn("Reset to default is disabled in Supabase mode.");
+    console.warn("Reset to default applied locally.");
   };
 
   const updateItem = async (id: string, updatedFields: Partial<AdminItem>) => {
     const previousItems = [...items];
     const nextItems = previousItems.map((i) => (i.id === id ? { ...i, ...updatedFields } : i));
     setItems(nextItems);
+    writeLocalFallback(section, nextItems);
 
-    if (usingFallback || id.startsWith("local-")) {
-      writeLocalFallback(section, nextItems);
+    if (usingFallback || id.startsWith("local-") || id.startsWith("temp-")) {
       notifySectionUpdated(section);
       return;
     }
 
     const tableName = sectionToTableMap[section as string];
-    if (!tableName || id.startsWith("temp-")) return;
+    if (!tableName) return;
 
     const rowData = mapItemToDb(section as string, updatedFields);
     const { error, data } = await supabase
@@ -575,8 +587,9 @@ export function useAdminStore(section: AdminSectionKey) {
       .single();
 
     if (error) {
-      console.error("Failed to update item in Supabase:", error.message || error);
-      setItems(previousItems);
+      console.warn(`Supabase update failed for ${section} (${error.code || error.message}), keeping local edit.`);
+      setUsingFallback(true);
+      notifySectionUpdated(section);
     } else if (data) {
       setItems((prev) => prev.map((i) => (i.id === id ? mapDbToItem(section as string, data) : i)));
       notifySectionUpdated(section);

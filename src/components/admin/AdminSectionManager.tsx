@@ -107,15 +107,28 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
     e.preventDefault();
     const imgField = defaultFields.find((f) => f.key === "img");
     const defaultImgFallback = imgField?.required ? "/img/web-dev.jpg" : "";
+    
+    // Auto-generate initials for team members or any card with empty icon
+    let derivedIcon = formData.icon ? String(formData.icon) : "";
+    if (!derivedIcon && formData.title) {
+      const parts = String(formData.title).trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        derivedIcon = `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      } else if (parts.length === 1) {
+        derivedIcon = parts[0].slice(0, 2).toUpperCase();
+      }
+    }
+
     const itemData: Record<string, FieldValue> = {
       title: String(formData.title || "New Item"),
-      subtitle: String(formData.subtitle || formData.category || ""),
-      category: String(formData.category || formData.subtitle || ""),
+      subtitle: String(formData.subtitle !== undefined ? formData.subtitle : (formData.category || "")),
+      category: String(formData.category !== undefined ? formData.category : (formData.subtitle || "")),
       img: formData.img ? String(formData.img) : defaultImgFallback,
-      desc: String(formData.desc || "")
+      desc: String(formData.desc || ""),
+      icon: derivedIcon,
     };
     defaultFields.forEach((f) => {
-      if (!["title", "subtitle", "category", "img", "desc"].includes(f.key)) {
+      if (!["title", "subtitle", "category", "img", "desc", "icon"].includes(f.key)) {
         itemData[f.key] = formData[f.key];
       }
     });
@@ -224,13 +237,13 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
                         />
                       </div>
                     </div>
-                  ) : item.icon ? (
+                  ) : (
                     <div className="px-6 pt-6 flex items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-heading font-bold text-base flex items-center justify-center shadow-lg shadow-blue-600/20">
-                        {item.icon}
+                        {item.icon || (item.title ? item.title.trim().slice(0, 2).toUpperCase() : "ZM")}
                       </div>
                     </div>
-                  ) : null}
+                  )}
                   <div className="p-6">
                     {(item.subtitle || item.category) && (
                       <span className="inline-block px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase mb-2 border border-blue-500/20">
