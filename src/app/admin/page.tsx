@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { useAdminStore } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
+import { AdminTechScene3D } from "@/components/3d/AdminTechScene3D";
+import { TiltCard3D } from "@/components/ui/TiltCard3D";
 
 interface QuickApp {
   id: string;
@@ -158,16 +160,16 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12 font-sans">
-      {/* Welcome & Super Admin Banner */}
-      <div className="bg-gradient-to-r from-[#0c194b] via-[#10246a] to-[#162e87] border border-blue-900/40 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold mb-3 border border-blue-500/30">
-            <Sparkles className="w-3.5 h-3.5" />
+      {/* Welcome & Super Admin Banner with 3D Tech Core */}
+      <div className="bg-gradient-to-r from-[#0c194b] via-[#10246a] to-[#162e87] border border-blue-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="absolute -right-10 -top-10 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold mb-3 border border-blue-500/30 backdrop-blur-sm">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span>Super Admin Management Suite</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-white mb-2">
-            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">Super Admin</span>
+          <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-white mb-2 tracking-tight">
+            Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-cyan-300">Super Admin</span>
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-6">
             Complete executive oversight over the Zeony ecosystem. Manage customer inquiries, review candidate applications, manage digital media, and edit all website content in real time.
@@ -176,7 +178,7 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap gap-2.5">
             <Link
               href="/admin/applications"
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2"
             >
               <UserCheck className="w-4 h-4" />
               <span>Review Applications {pendingAppsCount > 0 && `(${pendingAppsCount})`}</span>
@@ -184,7 +186,7 @@ export default function AdminDashboard() {
             </Link>
             <Link
               href="/admin/inquiries"
-              className="px-4 py-2.5 rounded-xl bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 text-xs font-bold transition-all border border-indigo-500/30 flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 text-xs font-bold transition-all border border-indigo-500/30 flex items-center gap-2 backdrop-blur-sm"
             >
               <Inbox className="w-4 h-4" />
               <span>Client Inquiries {newInquiriesCount > 0 && `(${newInquiriesCount})`}</span>
@@ -198,85 +200,98 @@ export default function AdminDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Interactive 3D Crystal Core Canvas */}
+        <div className="relative w-full lg:w-72 h-52 lg:h-60 shrink-0 rounded-2xl overflow-hidden flex items-center justify-center">
+          <AdminTechScene3D className="w-full h-full" />
+        </div>
       </div>
 
-      {/* Primary KPI Metrics */}
+      {/* Primary KPI Metrics with 3D Tilt */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Link
-          href="/admin/applications"
-          className="bg-[#0f172a] border border-slate-800 hover:border-blue-500/50 p-5 rounded-2xl shadow-lg transition-all group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Applications
-            </span>
-            <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-              <UserCheck className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-3xl font-black text-white font-mono">{totalAppsCount}</p>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
-            <span>Pending Review</span>
-            <span className="text-amber-400 font-bold">{pendingAppsCount} pending</span>
-          </div>
-        </Link>
+        <TiltCard3D intensity={7} className="rounded-2xl">
+          <Link
+            href="/admin/applications"
+            className="block h-full bg-[#0f172a] border border-slate-800 hover:border-blue-500/50 p-5 rounded-2xl shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Applications
+              </span>
+              <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                <UserCheck className="w-4 h-4" />
+              </span>
+            </div>
+            <p className="text-3xl font-black text-white font-mono">{totalAppsCount}</p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
+              <span>Pending Review</span>
+              <span className="text-amber-400 font-bold">{pendingAppsCount} pending</span>
+            </div>
+          </Link>
+        </TiltCard3D>
 
-        <Link
-          href="/admin/inquiries"
-          className="bg-[#0f172a] border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl shadow-lg transition-all group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Client Inquiries
-            </span>
-            <span className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-              <Inbox className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-3xl font-black text-white font-mono">{recentInquiries.length}</p>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
-            <span>New Leads</span>
-            <span className="text-blue-400 font-bold">{newInquiriesCount} new</span>
-          </div>
-        </Link>
+        <TiltCard3D intensity={7} className="rounded-2xl">
+          <Link
+            href="/admin/inquiries"
+            className="block h-full bg-[#0f172a] border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Client Inquiries
+              </span>
+              <span className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <Inbox className="w-4 h-4" />
+              </span>
+            </div>
+            <p className="text-3xl font-black text-white font-mono">{recentInquiries.length}</p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
+              <span>New Leads</span>
+              <span className="text-blue-400 font-bold">{newInquiriesCount} new</span>
+            </div>
+          </Link>
+        </TiltCard3D>
 
-        <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Live Content
-            </span>
-            <span className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </span>
+        <TiltCard3D intensity={7} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Live Content
+              </span>
+              <span className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                <Layers className="w-4 h-4" />
+              </span>
+            </div>
+            <p className="text-3xl font-black text-white font-mono">{totalContentItems}</p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
+              <span>Active Sections</span>
+              <span className="text-emerald-400 font-bold">10 Sections</span>
+            </div>
           </div>
-          <p className="text-3xl font-black text-white font-mono">{totalContentItems}</p>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
-            <span>Active Sections</span>
-            <span className="text-emerald-400 font-bold">10 Sections</span>
-          </div>
-        </div>
+        </TiltCard3D>
 
-        <Link
-          href="/admin/activity"
-          className="bg-[#0f172a] border border-slate-800 hover:border-emerald-500/50 p-5 rounded-2xl shadow-lg transition-all group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              System Audit
-            </span>
-            <span className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </span>
-          </div>
-          <p className="text-lg font-bold text-white mt-1 flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Operational</span>
-          </p>
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800">
-            <span>Database Sync</span>
-            <span className="text-emerald-400 font-bold">Connected</span>
-          </div>
-        </Link>
+        <TiltCard3D intensity={7} className="rounded-2xl">
+          <Link
+            href="/admin/activity"
+            className="block h-full bg-[#0f172a] border border-slate-800 hover:border-emerald-500/50 p-5 rounded-2xl shadow-lg transition-all group"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                System Audit
+              </span>
+              <span className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Activity className="w-4 h-4" />
+              </span>
+            </div>
+            <p className="text-lg font-bold text-white mt-1 flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Operational</span>
+            </p>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800">
+              <span>Database Sync</span>
+              <span className="text-emerald-400 font-bold">Connected</span>
+            </div>
+          </Link>
+        </TiltCard3D>
       </div>
 
       {/* Two Column Layout: Recent Applications & Inquiries */}
@@ -429,36 +444,37 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 10 Content Section Cards */}
+        {/* 10 Content Section Cards with 3D Tilt */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredCards.map((card, idx) => {
             const Icon = card.icon;
             return (
-              <Link
-                key={idx}
-                href={card.href}
-                className="bg-[#0f172a] border border-slate-800 hover:border-slate-700 p-5 rounded-2xl shadow-lg transition-all hover:translate-y-[-2px] hover:shadow-xl group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div
-                      className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-lg`}
-                    >
-                      <Icon className="w-5 h-5" />
+              <TiltCard3D key={idx} intensity={5} className="rounded-2xl">
+                <Link
+                  href={card.href}
+                  className="block h-full bg-[#0f172a] border border-slate-800 hover:border-blue-500/40 p-5 rounded-2xl shadow-lg transition-all group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div
+                        className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-lg`}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <span className="text-2xl font-black text-white font-mono">{card.count}</span>
                     </div>
-                    <span className="text-2xl font-black text-white font-mono">{card.count}</span>
+                    <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{card.desc}</p>
                   </div>
-                  <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
-                    {card.title}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{card.desc}</p>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-blue-400 group-hover:text-blue-300">
-                  <span>Manage Section</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-                </div>
-              </Link>
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-semibold text-blue-400 group-hover:text-blue-300">
+                    <span>Manage Section</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              </TiltCard3D>
             );
           })}
         </div>

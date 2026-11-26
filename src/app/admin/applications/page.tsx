@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast, Toaster } from "react-hot-toast";
 import { logAdminActivity } from "@/lib/activityStore";
+import { TiltCard3D } from "@/components/ui/TiltCard3D";
 
 interface Application {
   id: string;
@@ -281,29 +282,37 @@ export default function ApplicationsAdminPage() {
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
+      {/* KPI Stats Grid with 3D Tilt */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Applicants</p>
-          <p className="text-3xl font-black text-white font-mono mt-1">{stats.total}</p>
-          <p className="text-[11px] text-slate-400 mt-1">Across all tracks</p>
-        </div>
-        <div className="bg-[#0f172a] border border-amber-900/50 p-5 rounded-2xl shadow-lg relative overflow-hidden">
-          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pending Review</p>
-          <p className="text-3xl font-black text-amber-400 font-mono mt-1">{stats.pending}</p>
-          <p className="text-[11px] text-amber-300/70 mt-1">Awaiting decision</p>
-        </div>
-        <div className="bg-[#0f172a] border border-emerald-900/50 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Accepted</p>
-          <p className="text-3xl font-black text-emerald-400 font-mono mt-1">{stats.accepted}</p>
-          <p className="text-[11px] text-emerald-300/70 mt-1">Approved & notified</p>
-        </div>
-        <div className="bg-[#0f172a] border border-rose-900/50 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-rose-300 uppercase tracking-wider">Rejected</p>
-          <p className="text-3xl font-black text-rose-400 font-mono mt-1">{stats.rejected}</p>
-          <p className="text-[11px] text-rose-300/70 mt-1">Declined applications</p>
-        </div>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Applicants</p>
+            <p className="text-3xl font-black text-white font-mono mt-1">{stats.total}</p>
+            <p className="text-[11px] text-slate-400 mt-1">Across all tracks</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-amber-900/50 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Pending Review</p>
+            <p className="text-3xl font-black text-amber-400 font-mono mt-1">{stats.pending}</p>
+            <p className="text-[11px] text-amber-300/70 mt-1">Awaiting decision</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-emerald-900/50 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Accepted</p>
+            <p className="text-3xl font-black text-emerald-400 font-mono mt-1">{stats.accepted}</p>
+            <p className="text-[11px] text-emerald-300/70 mt-1">Approved & notified</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-rose-900/50 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-rose-300 uppercase tracking-wider">Rejected</p>
+            <p className="text-3xl font-black text-rose-400 font-mono mt-1">{stats.rejected}</p>
+            <p className="text-[11px] text-rose-300/70 mt-1">Declined applications</p>
+          </div>
+        </TiltCard3D>
       </div>
 
       {/* Search and Filters */}

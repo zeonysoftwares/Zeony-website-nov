@@ -16,6 +16,7 @@ import {
   Info
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { TiltCard3D } from "@/components/ui/TiltCard3D";
 
 interface MediaAsset {
   name: string;
@@ -241,69 +242,70 @@ export default function MediaLibraryPage() {
         </div>
       </div>
 
-      {/* Media Grid */}
+      {/* Media Grid with 3D Tilt */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filteredAssets.map((asset, idx) => {
           const isCopied = copiedPath === asset.path;
           return (
-            <div
-              key={idx}
-              className="bg-[#0f172a] border border-slate-800 hover:border-blue-500/50 rounded-2xl p-3 flex flex-col justify-between group transition-all hover:translate-y-[-2px] shadow-lg relative overflow-hidden"
-            >
-              {/* Image Preview Box */}
+            <TiltCard3D key={idx} intensity={6} className="rounded-2xl">
               <div
-                onClick={() => setPreviewAsset(asset)}
-                className="relative aspect-video w-full rounded-xl bg-[#09133a] overflow-hidden cursor-pointer flex items-center justify-center border border-slate-800 group-hover:border-blue-500/40"
+                className="h-full bg-[#0f172a] border border-slate-800 hover:border-blue-500/50 rounded-2xl p-3 flex flex-col justify-between group shadow-lg relative overflow-hidden"
               >
-                <Image
-                  src={asset.path}
-                  alt={asset.name}
-                  fill
-                  unoptimized
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <span className="p-2 rounded-xl bg-slate-900/80 text-white text-xs font-semibold backdrop-blur flex items-center gap-1">
-                    <Eye className="w-3.5 h-3.5" /> Preview
+                {/* Image Preview Box */}
+                <div
+                  onClick={() => setPreviewAsset(asset)}
+                  className="relative aspect-video w-full rounded-xl bg-[#09133a] overflow-hidden cursor-pointer flex items-center justify-center border border-slate-800 group-hover:border-blue-500/40"
+                >
+                  <Image
+                    src={asset.path}
+                    alt={asset.name}
+                    fill
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <span className="p-2 rounded-xl bg-slate-900/80 text-white text-xs font-semibold backdrop-blur flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5" /> Preview
+                    </span>
+                  </div>
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-black/60 text-slate-300 backdrop-blur">
+                    {asset.format}
                   </span>
                 </div>
-                <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-black/60 text-slate-300 backdrop-blur">
-                  {asset.format}
-                </span>
-              </div>
 
-              {/* Title & Path */}
-              <div className="mt-3">
-                <h4 className="text-xs font-bold text-white truncate" title={asset.name}>
-                  {asset.name}
-                </h4>
-                <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5" title={asset.path}>
-                  {asset.path}
-                </p>
-              </div>
+                {/* Title & Path */}
+                <div className="mt-3">
+                  <h4 className="text-xs font-bold text-white truncate" title={asset.name}>
+                    {asset.name}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-mono truncate mt-0.5" title={asset.path}>
+                    {asset.path}
+                  </p>
+                </div>
 
-              {/* Copy Path Button */}
-              <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
-                <span className="text-[10px] text-blue-400 capitalize font-medium">
-                  {asset.category.replace("_", " ")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(asset.path)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
-                    isCopied
-                      ? "bg-emerald-500 text-white"
-                      : "bg-blue-600/20 text-blue-300 hover:bg-blue-600/40"
-                  }`}
-                >
-                  {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  <span>{isCopied ? "Copied!" : "Copy Path"}</span>
-                </button>
+                {/* Copy Path Button */}
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-[10px] text-blue-400 capitalize font-medium">
+                    {asset.category.replace("_", " ")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(asset.path)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                      isCopied
+                        ? "bg-emerald-500 text-white"
+                        : "bg-blue-600/20 text-blue-300 hover:bg-blue-600/40"
+                    }`}
+                  >
+                    {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{isCopied ? "Copied!" : "Copy Path"}</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            </TiltCard3D>
           );
         })}
       </div>

@@ -29,10 +29,13 @@ import {
   Inbox,
   FolderOpen,
   History,
+  Search,
 } from "lucide-react";
 import Image from "next/image";
 import { useAdminAuth } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
+import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
+import { AdminTechScene3D } from "@/components/3d/AdminTechScene3D";
 
 type AuthView = "login" | "forgot-request" | "forgot-reset";
 
@@ -44,6 +47,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Badge notification counts
   const [pendingApps, setPendingApps] = useState(0);
   const [newInquiries, setNewInquiries] = useState(0);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  React.useEffect(() => {
+    const handleToggle = () => setIsPaletteOpen((prev) => !prev);
+    window.addEventListener("zeony_toggle_palette", handleToggle);
+    return () => window.removeEventListener("zeony_toggle_palette", handleToggle);
+  }, []);
 
   React.useEffect(() => {
     if (!isLoggedIn) return;
@@ -191,14 +201,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-blue-600/20 blur-[150px] rounded-full pointer-events-none" />
         <div className="fixed bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[150px] rounded-full pointer-events-none" />
 
-        <div className="max-w-md w-full bg-[#0c194b]/90 border border-blue-900/40 rounded-3xl p-8 shadow-2xl backdrop-blur-xl relative z-10">
-          <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-2 shadow-xl mb-4">
+        <div className="max-w-md w-full bg-[#0c194b]/95 border border-blue-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl relative z-10">
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-24 h-24 -mt-2 -mb-2 relative">
+              <AdminTechScene3D className="w-full h-full" />
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center p-2 shadow-xl mb-3 border border-blue-200">
               <Image
                 src="/img/z-logo.jpg"
                 alt="Zeony Logo"
-                width={48}
-                height={48}
+                width={40}
+                height={40}
                 className="object-contain rounded"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = "none";
@@ -600,7 +613,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full">
-        <header className="h-16 shrink-0 border-b border-slate-800 bg-[#0a1026]/80 backdrop-blur-md px-6 flex items-center justify-between z-30">
+        <header className="h-16 shrink-0 border-b border-slate-800 bg-[#0a1026]/90 backdrop-blur-xl px-6 flex items-center justify-between z-30">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -609,22 +622,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="w-5 h-5" />
             </button>
             <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>LIVE ADMIN MODE</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" />
+              <span className="font-semibold text-slate-300">ZEONY OS</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-[11px] text-blue-400">SUPER ADMIN</span>
             </div>
           </div>
+
+          {/* Quick Command Palette Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsPaletteOpen(true)}
+            className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[#09133a]/80 border border-blue-900/60 hover:border-blue-500/60 text-slate-400 hover:text-white transition-all text-xs shadow-inner group"
+          >
+            <Search className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden md:inline">Quick search or jump to...</span>
+            <span className="md:hidden">Search</span>
+            <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 rounded bg-blue-950/80 border border-blue-800 text-[10px] font-mono text-blue-300">
+              Ctrl K
+            </kbd>
+          </button>
 
           <div className="flex items-center gap-3">
             <Link
               href="/"
               target="_blank"
-              className="px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 text-xs font-semibold transition-all border border-blue-500/30 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 hover:from-blue-600/30 hover:to-indigo-600/30 text-blue-400 hover:text-blue-300 text-xs font-semibold transition-all border border-blue-500/30 flex items-center gap-2 shadow-sm"
             >
               <span>View Website</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
           </div>
         </header>
+
+        {/* Global Admin Command Palette */}
+        <AdminCommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+        />
 
         <main
           data-lenis-prevent

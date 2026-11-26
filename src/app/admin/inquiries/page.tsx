@@ -23,6 +23,7 @@ import {
   Check
 } from "lucide-react";
 import { logAdminActivity } from "@/lib/activityStore";
+import { TiltCard3D } from "@/components/ui/TiltCard3D";
 
 interface Inquiry {
   id: string;
@@ -249,31 +250,39 @@ export default function InquiriesAdminPage() {
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
+      {/* KPI Stats Cards with 3D Tilt */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Leads</p>
-          <p className="text-3xl font-black text-white font-mono mt-1">{stats.total}</p>
-          <p className="text-[11px] text-slate-400 mt-1">All recorded inquiries</p>
-        </div>
-        <div className="bg-[#0f172a] border border-blue-900/50 p-5 rounded-2xl shadow-lg relative overflow-hidden">
-          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-          <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider">New Inquiries</p>
-          <p className="text-3xl font-black text-blue-400 font-mono mt-1">{stats.newCount}</p>
-          <p className="text-[11px] text-blue-300/70 mt-1">Needs initial response</p>
-        </div>
-        <div className="bg-[#0f172a] border border-amber-900/40 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">In Progress</p>
-          <p className="text-3xl font-black text-amber-400 font-mono mt-1">{stats.inProgress}</p>
-          <p className="text-[11px] text-amber-300/70 mt-1">Follow up underway</p>
-        </div>
-        <div className="bg-[#0f172a] border border-emerald-900/40 p-5 rounded-2xl shadow-lg">
-          <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Contacted / Closed</p>
-          <p className="text-3xl font-black text-emerald-400 font-mono mt-1">
-            {stats.contacted + stats.closed}
-          </p>
-          <p className="text-[11px] text-emerald-300/70 mt-1">Addressed or completed</p>
-        </div>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Leads</p>
+            <p className="text-3xl font-black text-white font-mono mt-1">{stats.total}</p>
+            <p className="text-[11px] text-slate-400 mt-1">All recorded inquiries</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-blue-900/50 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider">New Inquiries</p>
+            <p className="text-3xl font-black text-blue-400 font-mono mt-1">{stats.newCount}</p>
+            <p className="text-[11px] text-blue-300/70 mt-1">Needs initial response</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-amber-900/40 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-amber-300 uppercase tracking-wider">In Progress</p>
+            <p className="text-3xl font-black text-amber-400 font-mono mt-1">{stats.inProgress}</p>
+            <p className="text-[11px] text-amber-300/70 mt-1">Follow up underway</p>
+          </div>
+        </TiltCard3D>
+        <TiltCard3D intensity={6} className="rounded-2xl">
+          <div className="h-full bg-[#0f172a] border border-emerald-900/40 p-5 rounded-2xl shadow-lg">
+            <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Contacted / Closed</p>
+            <p className="text-3xl font-black text-emerald-400 font-mono mt-1">
+              {stats.contacted + stats.closed}
+            </p>
+            <p className="text-[11px] text-emerald-300/70 mt-1">Addressed or completed</p>
+          </div>
+        </TiltCard3D>
       </div>
 
       {/* Filter and Search Bar */}

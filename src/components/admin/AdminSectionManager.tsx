@@ -7,6 +7,7 @@ import { Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, X, Upload, Loader2,
 import { AdminItem, useAdminStore, AdminSectionKey } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
 import { logAdminActivity } from "@/lib/activityStore";
+import { TiltCard3D } from "@/components/ui/TiltCard3D";
 
 type FieldValue =
   | string
@@ -205,87 +206,88 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#0f172a] border border-slate-800/80 hover:border-slate-700 rounded-2xl overflow-hidden shadow-lg transition-all hover:shadow-2xl flex flex-col justify-between group"
-            >
-              <div>
-                {item.img ? (
-                  <div className="relative h-44 w-full bg-slate-900/60 p-6 flex items-center justify-center border-b border-slate-800/60 overflow-hidden">
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={item.img}
-                        alt={item.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        unoptimized
-                        className="object-contain transition-transform duration-300 group-hover:scale-105"
-                      />
+            <TiltCard3D key={item.id} intensity={5} className="rounded-2xl">
+              <div
+                className="h-full bg-[#0f172a] border border-slate-800/80 hover:border-blue-500/40 rounded-2xl overflow-hidden shadow-lg transition-all hover:shadow-2xl flex flex-col justify-between group"
+              >
+                <div>
+                  {item.img ? (
+                    <div className="relative h-44 w-full bg-slate-900/60 p-6 flex items-center justify-center border-b border-slate-800/60 overflow-hidden">
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={item.img}
+                          alt={item.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          unoptimized
+                          className="object-contain transition-transform duration-300 group-hover:scale-105"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ) : item.icon ? (
-                  <div className="px-6 pt-6 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-heading font-bold text-base flex items-center justify-center shadow-lg shadow-blue-600/20">
-                      {item.icon}
+                  ) : item.icon ? (
+                    <div className="px-6 pt-6 flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-heading font-bold text-base flex items-center justify-center shadow-lg shadow-blue-600/20">
+                        {item.icon}
+                      </div>
                     </div>
+                  ) : null}
+                  <div className="p-6">
+                    {(item.subtitle || item.category) && (
+                      <span className="inline-block px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase mb-2 border border-blue-500/20">
+                        {item.subtitle || item.category}
+                      </span>
+                    )}
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{item.title}</h3>
+                    {item.desc && (
+                      <p className="text-sm text-slate-400 line-clamp-3 leading-relaxed">{item.desc}</p>
+                    )}
                   </div>
-                ) : null}
-                <div className="p-6">
-                  {(item.subtitle || item.category) && (
-                    <span className="inline-block px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-semibold tracking-wide uppercase mb-2 border border-blue-500/20">
-                      {item.subtitle || item.category}
-                    </span>
-                  )}
-                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{item.title}</h3>
-                  {item.desc && (
-                    <p className="text-sm text-slate-400 line-clamp-3 leading-relaxed">{item.desc}</p>
+                </div>
+
+                {/* Card Footer / Action */}
+                <div className="px-6 py-4 bg-slate-900/40 border-t border-slate-800/60 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-mono">ID: {item.id}</span>
+
+                  {deleteIdConfirm === item.id ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          deleteItem(item.id);
+                          logAdminActivity("Deleted Content Item", "content", `Deleted item "${item.title}" from ${title}`);
+                          setDeleteIdConfirm(null);
+                        }}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-md"
+                      >
+                        Confirm Delete
+                      </button>
+                      <button
+                        onClick={() => setDeleteIdConfirm(null)}
+                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditOpenModal(item)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 text-xs font-semibold transition-all flex items-center gap-1.5 border border-blue-500/20 hover:border-blue-500/40"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeleteIdConfirm(item.id)}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold transition-all flex items-center gap-1.5 border border-red-500/20 hover:border-red-500/40"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
-
-              {/* Card Footer / Action */}
-              <div className="px-6 py-4 bg-slate-900/40 border-t border-slate-800/60 flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-mono">ID: {item.id}</span>
-
-                {deleteIdConfirm === item.id ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        deleteItem(item.id);
-                        logAdminActivity("Deleted Content Item", "content", `Deleted item "${item.title}" from ${title}`);
-                        setDeleteIdConfirm(null);
-                      }}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-md"
-                    >
-                      Confirm Delete
-                    </button>
-                    <button
-                      onClick={() => setDeleteIdConfirm(null)}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEditOpenModal(item)}
-                      className="px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 text-xs font-semibold transition-all flex items-center gap-1.5 border border-blue-500/20 hover:border-blue-500/40"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteIdConfirm(item.id)}
-                      className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold transition-all flex items-center gap-1.5 border border-red-500/20 hover:border-red-500/40"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            </TiltCard3D>
           ))}
         </div>
       )}
