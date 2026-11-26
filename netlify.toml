@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # NEXT_PUBLIC_* variables are intentionally inlined into Next.js client bundles.
+  # Private server secrets (RESEND_API_KEY, SMTP_EMAIL, SMTP_PASSWORD) remain scanned.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY"
