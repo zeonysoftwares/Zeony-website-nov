@@ -32,10 +32,15 @@ import {
   Search,
 } from "lucide-react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useAdminAuth } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
 import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
-import { AdminTechScene3D } from "@/components/3d/AdminTechScene3D";
+
+const AdminTechScene3D = dynamic(
+  () => import("@/components/3d/AdminTechScene3D").then((mod) => mod.AdminTechScene3D),
+  { ssr: false }
+);
 
 type AuthView = "login" | "forgot-request" | "forgot-reset";
 

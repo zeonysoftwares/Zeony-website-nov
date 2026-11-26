@@ -1,28 +1,34 @@
 "use client";
 
-import React, { useRef, useMemo, useSyncExternalStore } from "react";
+import React, { useRef, useMemo, useState, useEffect, Component } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useReducedMotion } from "framer-motion";
 
-const emptySubscribe = () => () => {};
-
-function getDeviceCapability() {
-  if (typeof window === "undefined") return { canRender: false, isMobile: false };
-  const mobile = window.innerWidth < 768;
-  try {
-    const canvas = document.createElement("canvas");
-    const gl = Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
-    return { canRender: gl, isMobile: mobile };
-  } catch {
-    return { canRender: false, isMobile: mobile };
-  }
+interface ErrorBoundaryState {
+  hasError: boolean;
 }
 
-let cachedCap: { canRender: boolean; isMobile: boolean } | null = null;
-function getCachedCap() {
-  if (!cachedCap) cachedCap = getDeviceCapability();
-  return cachedCap;
+class WebGLErrorBoundary extends Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("WebGL Scene encountered an error, falling back:", error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
 }
 
 function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
@@ -39,7 +45,7 @@ function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
     for (let i = 0; i < particleCount; i++) {
       const radius = 2.0 + (i % 25) * 0.08;
       const angle = (i * 2.399) % (Math.PI * 2);
-      const y = ((i / particleCount) - 0.5) * 3;
+      const y = (i / particleCount - 0.5) * 3;
       positions[i * 3] = Math.cos(angle) * radius;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = Math.sin(angle) * radius;
@@ -56,6 +62,13 @@ function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
     });
     return { particleGeo: geo, particleMat: mat };
   }, [particleCount]);
+
+  useEffect(() => {
+    return () => {
+      particleGeo.dispose();
+      particleMat.dispose();
+    };
+  }, [particleGeo, particleMat]);
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime();
@@ -93,12 +106,7 @@ function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
       {/* Outer Wireframe Icosahedron */}
       <mesh ref={outerRef}>
         <icosahedronGeometry args={[1.35, 1]} />
-        <meshBasicMaterial
-          color="#38bdf8"
-          wireframe
-          transparent
-          opacity={0.35}
-        />
+        <meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.35} />
       </mesh>
 
       {/* Inner Glowing Core */}
@@ -110,7 +118,6 @@ function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
           emissiveIntensity={0.6}
           roughness={0.2}
           metalness={0.8}
-          wireframe={false}
         />
       </mesh>
 
@@ -134,31 +141,46 @@ function FloatingCrystalCore({ isMobile }: { isMobile: boolean }) {
 
 export function AdminTechScene3D({ className = "" }: { className?: string }) {
   const shouldReduceMotion = useReducedMotion();
-  const cap = useSyncExternalStore(emptySubscribe, getCachedCap, () => ({
-    canRender: false,
-    isMobile: false,
-  }));
+  const [isMounted, setIsMounted] = useState(false);
+  const [canRender, setCanRender] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  if (shouldReduceMotion || !cap.canRender) {
-    return (
-      <div className={`pointer-events-none relative overflow-hidden ${className}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent blur-2xl" />
-      </div>
-    );
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+      setCanRender(gl);
+      setIsMobile(window.innerWidth < 768);
+    } catch {
+      setCanRender(false);
+    }
+  }, []);
+
+  const fallback = (
+    <div className={`pointer-events-none relative overflow-hidden ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent blur-2xl" />
+    </div>
+  );
+
+  if (!isMounted || !canRender || shouldReduceMotion) {
+    return fallback;
   }
 
   return (
-    <div className={`pointer-events-none relative ${className}`} aria-hidden="true">
-      <Canvas
-        dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
-        camera={{ position: [0, 0, 4.6], fov: 45 }}
-      >
-        <ambientLight intensity={0.7} />
-        <pointLight position={[5, 5, 5]} intensity={1.2} color="#60a5fa" />
-        <pointLight position={[-5, -5, -3]} intensity={0.8} color="#818cf8" />
-        <FloatingCrystalCore isMobile={cap.isMobile} />
-      </Canvas>
-    </div>
+    <WebGLErrorBoundary fallback={fallback}>
+      <div className={`pointer-events-none relative ${className}`} aria-hidden="true">
+        <Canvas
+          dpr={[1, 1.5]}
+          gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
+          camera={{ position: [0, 0, 4.6], fov: 45 }}
+        >
+          <ambientLight intensity={0.7} />
+          <pointLight position={[5, 5, 5]} intensity={1.2} color="#60a5fa" />
+          <pointLight position={[-5, -5, -3]} intensity={0.8} color="#818cf8" />
+          <FloatingCrystalCore isMobile={isMobile} />
+        </Canvas>
+      </div>
+    </WebGLErrorBoundary>
   );
 }

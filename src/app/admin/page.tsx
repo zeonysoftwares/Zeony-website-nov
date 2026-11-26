@@ -28,10 +28,15 @@ import {
   Layers,
   Database
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useAdminStore } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
-import { AdminTechScene3D } from "@/components/3d/AdminTechScene3D";
 import { TiltCard3D } from "@/components/ui/TiltCard3D";
+
+const AdminTechScene3D = dynamic(
+  () => import("@/components/3d/AdminTechScene3D").then((mod) => mod.AdminTechScene3D),
+  { ssr: false }
+);
 
 interface QuickApp {
   id: string;
