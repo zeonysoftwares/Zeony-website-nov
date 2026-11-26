@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, X, Upload, Loader2, Edit } from "lucide-react";
+import { Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, X, Upload, Loader2, Edit, Crop } from "lucide-react";
 import { AdminItem, useAdminStore, AdminSectionKey } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
 import { logAdminActivity } from "@/lib/activityStore";
 import { TiltCard3D } from "@/components/ui/TiltCard3D";
+import ImageCropModal from "@/components/admin/ImageCropModal";
 
 type FieldValue =
   | string
@@ -41,6 +42,8 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
   const [deleteIdConfirm, setDeleteIdConfirm] = useState<string | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [cropImageRaw, setCropImageRaw] = useState<string | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
 
   const defaultFields: NonNullable<AdminSectionManagerProps["fields"]> = fields || [
     { key: "title", label: "Title / Name", placeholder: "Enter item title...", required: true, type: "text" },
@@ -70,24 +73,29 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
     setIsModalOpen(true);
   };
 
-  const handleImageFileUpload = async (file: File) => {
-    setIsUploading(true);
-    try {
-      // 1. Immediately read as local Data URL for guaranteed preview and offline support
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        setFormData((prev) => ({ ...prev, img: dataUrl }));
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
+  const handleImageFileSelect = (file: File) => {
+    setPendingUploadFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropImageRaw(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
-      // 2. Attempt Supabase storage upload if available
-      const fileExt = file.name.split('.').pop() || "png";
-      const fileName = `admin/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+  const handleCroppedImageReady = async (croppedDataUrl: string) => {
+    setCropImageRaw(null);
+    setFormData((prev) => ({ ...prev, img: croppedDataUrl }));
+
+    // Also attempt background sync to Supabase storage with cropped blob
+    try {
+      setIsUploading(true);
+      const res = await fetch(croppedDataUrl);
+      const blob = await res.blob();
+      const fileExt = pendingUploadFile?.name?.split('.')?.pop() || "jpg";
+      const fileName = `admin/${Date.now()}_cropped.${fileExt}`;
       const { data: uploadData, error } = await supabase.storage
         .from("storage_images")
-        .upload(fileName, file);
+        .upload(fileName, blob, { contentType: "image/jpeg" });
 
       if (uploadData && !error) {
         const { data: publicUrlData } = supabase.storage
@@ -98,8 +106,10 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
         }
       }
     } catch (e) {
-      console.warn("Storage upload warning, using local preview image instead:", e);
+      console.warn("Storage sync warning, using cropped local preview:", e);
+    } finally {
       setIsUploading(false);
+      setPendingUploadFile(null);
     }
   };
 
@@ -370,7 +380,8 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
                             id="admin-image-upload"
                             onChange={(e) => {
                               if (e.target.files && e.target.files[0]) {
-                                handleImageFileUpload(e.target.files[0]);
+                                handleImageFileSelect(e.target.files[0]);
+                                e.target.value = "";
                               }
                             }}
                             className="hidden"
@@ -382,38 +393,48 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
                             {isUploading ? (
                               <>
                                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                                <span>Uploading image...</span>
+                                <span>Processing image...</span>
                               </>
                             ) : (
                               <>
-                                <Upload className="w-4 h-4 text-blue-400" />
-                                <span>Or Upload Image from Computer</span>
+                                <Crop className="w-4 h-4 text-cyan-400" />
+                                <span>Upload & Crop Image from Computer</span>
                               </>
                             )}
                           </label>
                         </div>
 
-                        {/* Thumbnail Preview */}
+                        {/* Thumbnail Preview & Recrop Action */}
                         {formData.img && (
-                          <div className="mt-2 p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-slate-800/80 overflow-hidden relative shrink-0 flex items-center justify-center">
+                          <div className="mt-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-slate-800/80 overflow-hidden relative shrink-0 flex items-center justify-center border border-slate-700">
                               <Image src={String(formData.img)} alt="Preview" fill sizes="48px" unoptimized className="object-contain" />
                             </div>
                             <div className="overflow-hidden flex-1">
                               <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Image Ready
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Cropped & Ready
                               </p>
                               <p className="text-[11px] text-slate-500 truncate">{String(formData.img)}</p>
                             </div>
-                            {!field.required && (
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
-                                onClick={() => setFormData({ ...formData, [field.key]: "" })}
-                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors shrink-0"
+                                onClick={() => setCropImageRaw(String(formData.img))}
+                                className="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium transition-colors flex items-center gap-1"
+                                title="Re-crop this image"
                               >
-                                Clear
+                                <Crop className="w-3 h-3" /> Re-crop
                               </button>
-                            )}
+                              {!field.required && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, [field.key]: "" })}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -559,6 +580,21 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
           </div>
         )}
       </AnimatePresence>
+
+      {/* Image Crop Modal */}
+      {cropImageRaw && (
+        <ImageCropModal
+          isOpen={true}
+          imageSrc={cropImageRaw}
+          title={`Crop Image for ${title}`}
+          initialAspectRatio="free"
+          onCropComplete={handleCroppedImageReady}
+          onCancel={() => {
+            setCropImageRaw(null);
+            setPendingUploadFile(null);
+          }}
+        />
+      )}
     </div>
   );
 }

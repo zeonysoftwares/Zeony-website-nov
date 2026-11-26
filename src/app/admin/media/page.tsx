@@ -13,10 +13,13 @@ import {
   Eye,
   Filter,
   Sparkles,
-  Info
+  Info,
+  Crop,
+  Plus
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TiltCard3D } from "@/components/ui/TiltCard3D";
+import ImageCropModal from "@/components/admin/ImageCropModal";
 
 interface MediaAsset {
   name: string;
@@ -96,6 +99,12 @@ export default function MediaLibraryPage() {
   const [previewAsset, setPreviewAsset] = useState<MediaAsset | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedAssets, setUploadedAssets] = useState<MediaAsset[]>([]);
+  const [cropModalData, setCropModalData] = useState<{
+    rawSrc: string;
+    targetAssetIndex?: number;
+    fileName?: string;
+    category?: MediaAsset["category"];
+  } | null>(null);
 
   const allAssets = useMemo(() => {
     return [...uploadedAssets, ...BUILT_IN_ASSETS];
@@ -121,55 +130,79 @@ export default function MediaLibraryPage() {
     setTimeout(() => setCopiedPath(null), 2000);
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileForCrop = (file: File, targetIndex?: number, targetCategory?: MediaAsset["category"]) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropModalData({
+        rawSrc: reader.result as string,
+        targetAssetIndex: targetIndex,
+        fileName: file.name,
+        category: targetCategory || "general",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
-    setIsUploading(true);
-    try {
-      const fileExt = file.name.split(".").pop() || "png";
-      const fileName = `admin/${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${fileExt}`;
+  const handleCropComplete = async (croppedUrl: string) => {
+    if (!cropModalData) return;
+    const { targetAssetIndex, fileName, category } = cropModalData;
 
-      // 1. Try Supabase Storage
-      const { data, error } = await supabase.storage.from("storage_images").upload(fileName, file);
-
-      if (data && !error) {
-        const { data: publicUrlData } = supabase.storage
-          .from("storage_images")
-          .getPublicUrl(fileName);
-
-        if (publicUrlData?.publicUrl) {
-          const newAsset: MediaAsset = {
-            name: file.name,
-            path: publicUrlData.publicUrl,
-            category: "general",
-            format: fileExt.toUpperCase(),
+    // If replacing an existing card asset
+    if (targetAssetIndex !== undefined && targetAssetIndex >= 0) {
+      setUploadedAssets((prev) => {
+        const copy = [...prev];
+        if (copy[targetAssetIndex]) {
+          copy[targetAssetIndex] = {
+            ...copy[targetAssetIndex],
+            path: croppedUrl,
           };
-          setUploadedAssets((prev) => [newAsset, ...prev]);
-          handleCopy(publicUrlData.publicUrl);
-          setIsUploading(false);
-          return;
+        }
+        return copy;
+      });
+    } else {
+      // Add as brand new asset
+      const cleanName = fileName ? fileName.replace(/\.[^/.]+$/, "") : "Custom Cropped Image";
+      const newAsset: MediaAsset = {
+        name: cleanName,
+        path: croppedUrl,
+        category: category || "general",
+        format: "JPG",
+      };
+      setUploadedAssets((prev) => [newAsset, ...prev]);
+    }
+
+    handleCopy(croppedUrl);
+    setCropModalData(null);
+
+    // Background upload to Supabase storage if reachable
+    try {
+      const res = await fetch(croppedUrl);
+      const blob = await res.blob();
+      const storageName = `media/${Date.now()}_${Math.random().toString(36).substring(2, 6)}.jpg`;
+      const { data } = await supabase.storage.from("storage_images").upload(storageName, blob, { contentType: "image/jpeg" });
+      if (data) {
+        const { data: publicUrlData } = supabase.storage.from("storage_images").getPublicUrl(storageName);
+        if (publicUrlData?.publicUrl) {
+          const finalUrl = publicUrlData.publicUrl;
+          if (targetAssetIndex !== undefined && targetAssetIndex >= 0) {
+            setUploadedAssets((prev) => {
+              const copy = [...prev];
+              if (copy[targetAssetIndex]) copy[targetAssetIndex].path = finalUrl;
+              return copy;
+            });
+          }
         }
       }
-
-      // Fallback: Read as base64 data URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        const newAsset: MediaAsset = {
-          name: file.name,
-          path: dataUrl,
-          category: "general",
-          format: fileExt.toUpperCase(),
-        };
-        setUploadedAssets((prev) => [newAsset, ...prev]);
-        handleCopy(dataUrl);
-        setIsUploading(false);
-      };
-      reader.readAsDataURL(file);
     } catch {
-      setIsUploading(false);
+      // Keep local cropped data URL
     }
+  };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleFileForCrop(file, undefined, categoryFilter !== "all" ? (categoryFilter as MediaAsset["category"]) : "general");
+    e.target.value = "";
   };
 
   return (
@@ -286,11 +319,47 @@ export default function MediaLibraryPage() {
                   </p>
                 </div>
 
-                {/* Copy Path Button */}
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-[10px] text-blue-400 capitalize font-medium">
-                    {asset.category.replace("_", " ")}
-                  </span>
+                {/* Card Actions: Crop, Replace & Copy Path */}
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1">
+                    {/* Re-crop / Edit Crop for this card */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCropModalData({
+                          rawSrc: asset.path,
+                          targetAssetIndex: idx < uploadedAssets.length ? idx : undefined,
+                          fileName: asset.name,
+                          category: asset.category,
+                        })
+                      }
+                      title="Crop or resize this image"
+                      className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                    >
+                      <Crop className="w-3 h-3 text-cyan-400" />
+                    </button>
+
+                    {/* Upload new image specifically for this card */}
+                    <label
+                      title="Upload & replace image for this card"
+                      className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                    >
+                      <Upload className="w-3 h-3 text-blue-400" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileForCrop(file, idx < uploadedAssets.length ? idx : undefined, asset.category);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => handleCopy(asset.path)}
@@ -358,6 +427,18 @@ export default function MediaLibraryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Crop Modal for Media Assets */}
+      {cropModalData && (
+        <ImageCropModal
+          isOpen={true}
+          imageSrc={cropModalData.rawSrc}
+          title={cropModalData.targetAssetIndex !== undefined ? `Crop & Replace Image for ${cropModalData.fileName || "Asset"}` : "Crop & Upload Image to Media Gallery"}
+          initialAspectRatio="free"
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropModalData(null)}
+        />
       )}
     </div>
   );
