@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Crop, ZoomIn, ZoomOut, RotateCw, Check, X, Sparkles, Move } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCw, Check, X, Move, Circle, Square, Sparkles } from "lucide-react";
 
-export type AspectRatioOption = "free" | "1:1" | "16:9" | "4:3" | "3:4";
+export type CropShape = "circle" | "square";
 
 interface ImageCropModalProps {
   isOpen: boolean;
   imageSrc: string;
   title?: string;
-  initialAspectRatio?: AspectRatioOption;
+  defaultShape?: CropShape;
+  initialAspectRatio?: string; // backwards compatibility
   onCropComplete: (croppedDataUrl: string) => void;
   onCancel: () => void;
 }
@@ -17,14 +18,14 @@ interface ImageCropModalProps {
 export default function ImageCropModal({
   isOpen,
   imageSrc,
-  title = "Crop & Adjust Image",
-  initialAspectRatio = "free",
+  title = "Profile Photo Crop",
+  defaultShape = "circle",
   onCropComplete,
   onCancel,
 }: ImageCropModalProps) {
   const [zoom, setZoom] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
-  const [aspect, setAspect] = useState<AspectRatioOption>(initialAspectRatio);
+  const [shape, setShape] = useState<CropShape>(defaultShape);
   const [isDragging, setIsDragging] = useState(false);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -32,29 +33,33 @@ export default function ImageCropModal({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Reset adjustments whenever a new image source is opened
+  // Reset adjustments whenever modal opens with a new image
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
       setRotation(0);
       setPan({ x: 0, y: 0 });
-      setAspect(initialAspectRatio);
+      setShape(defaultShape);
     }
-  }, [isOpen, imageSrc, initialAspectRatio]);
+  }, [isOpen, imageSrc, defaultShape]);
 
+  // Mouse drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
-    setPan({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
-  }, [isDragging, dragStart]);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    },
+    [isDragging, dragStart]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -71,7 +76,7 @@ export default function ImageCropModal({
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  // Touch support for mobile / tablet devices
+  // Touch handlers for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       setIsDragging(true);
@@ -94,134 +99,130 @@ export default function ImageCropModal({
     setIsDragging(false);
   };
 
-  const getTargetDimensions = (): { width: number; height: number } => {
-    switch (aspect) {
-      case "1:1":
-        return { width: 500, height: 500 };
-      case "16:9":
-        return { width: 640, height: 360 };
-      case "4:3":
-        return { width: 600, height: 450 };
-      case "3:4":
-        return { width: 450, height: 600 };
-      case "free":
-      default:
-        return { width: 600, height: 400 };
-    }
+  // Zoom via wheel
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom((prev) => {
+      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+      const next = prev + delta;
+      return Math.min(Math.max(next, 0.6), 3.5);
+    });
   };
 
   const applyCrop = () => {
     if (!imageRef.current) return;
     const img = imageRef.current;
-    const { width: targetW, height: targetH } = getTargetDimensions();
+    const size = 512; // Export high-resolution 512x512 profile picture
 
     const canvas = document.createElement("canvas");
-    canvas.width = targetW;
-    canvas.height = targetH;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Fill background with high-quality dark or transparent
     ctx.imageSmoothingQuality = "high";
     ctx.imageSmoothingEnabled = true;
 
-    // Move to center of canvas
+    // Move to center
     ctx.save();
-    ctx.translate(targetW / 2, targetH / 2);
+    ctx.translate(size / 2, size / 2);
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(zoom, zoom);
 
-    // Apply pan offset proportional to render container
-    const containerW = containerRef.current?.clientWidth || targetW;
-    const scaleRatio = targetW / containerW;
-    ctx.translate(pan.x * scaleRatio, pan.y * scaleRatio);
+    // Container scaling
+    const containerW = containerRef.current?.clientWidth || size;
+    const scaleFactor = size / (containerW * 0.72); // matched with the 72% WhatsApp circular crop boundary
+    ctx.translate(pan.x * scaleFactor, pan.y * scaleFactor);
 
-    // Draw image centered
+    // Draw image preserving native aspect
     const imgAspect = img.naturalWidth / img.naturalHeight;
-    let drawW = targetW;
-    let drawH = targetW / imgAspect;
-    if (drawH < targetH) {
-      drawH = targetH;
-      drawW = targetH * imgAspect;
+    let drawW = size;
+    let drawH = size / imgAspect;
+    if (drawH < size) {
+      drawH = size;
+      drawW = size * imgAspect;
     }
 
     ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.restore();
 
-    const croppedUrl = canvas.toDataURL("image/jpeg", 0.92);
+    // Export as high-quality JPEG profile photo
+    const croppedUrl = canvas.toDataURL("image/jpeg", 0.94);
     onCropComplete(croppedUrl);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="bg-[#0c194b] border border-blue-900/60 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-200 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-blue-900/40 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-              <Crop className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md">
+      <div className="bg-[#0b141a] border border-[#202c33] rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl text-slate-200 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* WhatsApp Profile Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-[#202c33]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#00a884]/15 border border-[#00a884]/40 flex items-center justify-center text-[#00a884]">
+              <Circle className="w-5 h-5 fill-current" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">{title}</h3>
-              <p className="text-xs text-slate-400">Crop, zoom, pan, and rotate your image before saving.</p>
+              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                {title}
+              </h3>
+              <p className="text-xs text-slate-400">
+                Drag and pinch or zoom to fit your profile photo within the circle.
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-slate-400 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Aspect Ratio Selector */}
-        <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-          <span className="text-slate-400 font-medium">Aspect Ratio:</span>
-          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-            {(["1:1", "16:9", "4:3", "3:4", "free"] as AspectRatioOption[]).map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => setAspect(opt)}
-                className={`px-3 py-1 rounded-lg font-semibold transition-all ${
-                  aspect === opt
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {opt.toUpperCase()}
-              </button>
-            ))}
+        {/* Shape Switcher (WhatsApp Circle vs Standard Square) */}
+        <div className="flex items-center justify-between py-3 text-xs">
+          <span className="text-slate-400 font-medium">Framing Format:</span>
+          <div className="flex items-center gap-1.5 bg-[#111b21] p-1 rounded-xl border border-[#202c33]">
+            <button
+              type="button"
+              onClick={() => setShape("circle")}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all ${
+                shape === "circle"
+                  ? "bg-[#00a884] text-white shadow-md shadow-[#00a884]/25"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Circle className="w-3.5 h-3.5" /> WhatsApp Circle
+            </button>
+            <button
+              type="button"
+              onClick={() => setShape("square")}
+              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all ${
+                shape === "square"
+                  ? "bg-[#00a884] text-white shadow-md shadow-[#00a884]/25"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Square className="w-3.5 h-3.5" /> Square Box
+            </button>
           </div>
         </div>
 
-        {/* Crop Viewport Box */}
+        {/* WhatsApp Crop Viewport */}
         <div
           ref={containerRef}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className={`relative w-full h-80 bg-slate-950 rounded-2xl overflow-hidden border-2 border-dashed border-blue-500/40 flex items-center justify-center select-none cursor-${
+          onWheel={handleWheel}
+          className={`relative w-full h-80 sm:h-96 bg-[#111b21] rounded-2xl overflow-hidden select-none cursor-${
             isDragging ? "grabbing" : "grab"
-          }`}
+          } flex items-center justify-center`}
         >
-          {/* Guide Overlay Grid */}
-          <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 border border-blue-500/20">
-            <div className="border-r border-b border-white/10" />
-            <div className="border-r border-b border-white/10" />
-            <div className="border-b border-white/10" />
-            <div className="border-r border-b border-white/10" />
-            <div className="border-r border-b border-white/10" />
-            <div className="border-b border-white/10" />
-            <div className="border-r border-white/10" />
-            <div className="border-r border-white/10" />
-            <div />
-          </div>
-
-          {/* Interactive Transformable Image */}
+          {/* Transformable Background Image */}
           <div
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom})`,
@@ -233,29 +234,74 @@ export default function ImageCropModal({
             <img
               ref={imageRef}
               src={imageSrc}
-              alt="Source for Crop"
+              alt="Profile Crop Source"
               className="max-h-full max-w-full object-contain pointer-events-none"
               draggable={false}
             />
           </div>
 
-          <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded-lg text-[11px] text-slate-300 flex items-center gap-1.5 pointer-events-none border border-slate-800">
-            <Move className="w-3.5 h-3.5 text-blue-400" /> Drag image to position
+          {/* WhatsApp Darkened Mask Overlay with Clear Circular Viewport */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            {shape === "circle" ? (
+              <div
+                className="w-64 h-64 sm:w-72 sm:h-72 rounded-full border-2 border-dashed border-[#00a884] relative"
+                style={{
+                  boxShadow: "0 0 0 9999px rgba(11, 20, 26, 0.78)",
+                }}
+              >
+                {/* Crosshairs & Rule-of-Thirds Grid inside the circle */}
+                <div className="absolute inset-0 rounded-full overflow-hidden grid grid-cols-3 grid-rows-3 opacity-30">
+                  <div className="border-r border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-b border-white" />
+                  <div className="border-r border-white" />
+                  <div className="border-r border-white" />
+                  <div />
+                </div>
+              </div>
+            ) : (
+              <div
+                className="w-64 h-64 sm:w-72 sm:h-72 rounded-2xl border-2 border-dashed border-[#00a884] relative"
+                style={{
+                  boxShadow: "0 0 0 9999px rgba(11, 20, 26, 0.78)",
+                }}
+              >
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-30">
+                  <div className="border-r border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-r border-b border-white" />
+                  <div className="border-b border-white" />
+                  <div className="border-r border-white" />
+                  <div className="border-r border-white" />
+                  <div />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Interactive Drag Pill Badge */}
+          <div className="absolute bottom-3 left-3 bg-[#111b21]/90 backdrop-blur px-3 py-1.5 rounded-full text-[11px] text-slate-300 flex items-center gap-1.5 pointer-events-none border border-[#202c33]">
+            <Move className="w-3.5 h-3.5 text-[#00a884]" /> Drag image to adjust position
           </div>
         </div>
 
-        {/* Zoom & Rotation Controls */}
-        <div className="flex items-center justify-between gap-4 bg-slate-900/60 p-3 rounded-2xl border border-blue-900/30 text-xs">
+        {/* WhatsApp Style Zoom & Rotation Bar */}
+        <div className="flex items-center justify-between gap-4 bg-[#111b21] p-3 rounded-2xl border border-[#202c33] text-xs">
           <div className="flex items-center gap-3 flex-1">
             <ZoomOut className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="range"
-              min="0.5"
-              max="3"
+              min="0.6"
+              max="3.2"
               step="0.05"
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 cursor-pointer"
+              className="w-full accent-[#00a884] cursor-pointer"
             />
             <ZoomIn className="w-4 h-4 text-slate-400 shrink-0" />
             <span className="font-mono text-slate-300 w-12 text-right">{Math.round(zoom * 100)}%</span>
@@ -264,27 +310,27 @@ export default function ImageCropModal({
           <button
             type="button"
             onClick={() => setRotation((prev) => (prev + 90) % 360)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 font-medium transition-colors shrink-0"
+            className="px-3 py-2 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-slate-200 flex items-center gap-1.5 font-semibold transition-colors shrink-0"
           >
-            <RotateCw className="w-3.5 h-3.5" /> Rotate 90°
+            <RotateCw className="w-3.5 h-3.5 text-[#00a884]" /> Rotate
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-end gap-3 pt-3">
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-slate-300 text-xs font-semibold transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={applyCrop}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#02906f] text-white text-xs font-bold transition-all shadow-lg shadow-[#00a884]/25 flex items-center gap-2"
           >
-            <Check className="w-4 h-4" /> Apply & Use Cropped Image
+            <Check className="w-4 h-4" /> Done
           </button>
         </div>
       </div>
