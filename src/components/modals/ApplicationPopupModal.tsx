@@ -57,6 +57,13 @@ const internshipDomains = [
   { id: "int-cloud", name: "Cloud Computing & DevOps", icon: Cloud, desc: "AWS, Docker & CI/CD" },
 ];
 
+const projectDevelopmentDomains = [
+  { id: "proj-genai", name: "Gen AI & ML", icon: Lightbulb, desc: "LLMs, Diffusion Models, Prompt Eng & Machine Learning" },
+  { id: "proj-aimodel", name: "AI Model Development", icon: Database, desc: "Custom Neural Networks, Fine-Tuning & Model Deployment" },
+  { id: "proj-fullstack", name: "Full Stack Development", icon: Code2, desc: "Enterprise Next.js, React, Node.js & Scalable Databases" },
+  { id: "proj-appdev", name: "App Development", icon: Layout, desc: "Cross-Platform iOS & Android Native Mobile Apps" },
+];
+
 const trainingDomains = [
   { id: "trn-ind", name: "Industry-Oriented Training & Certification", icon: GraduationCap, desc: "Bootcamps & skill programs" },
   { id: "trn-int", name: "Internship & Live Projects", icon: Briefcase, desc: "Guided production experience" },
@@ -101,8 +108,8 @@ const stepLabels = [
 export function ApplicationPopupModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [programType, setProgramType] = useState<"training" | "internship" | "workshops">("internship");
-  const [selectedDomain, setSelectedDomain] = useState<string>("int-web");
+  const [programType, setProgramType] = useState<"project_development" | "training" | "internship" | "workshops">("project_development");
+  const [selectedDomain, setSelectedDomain] = useState<string>("proj-genai");
   const [trackSearch, setTrackSearch] = useState("");
   const [duration, setDuration] = useState<string>("30 days");
   const [dateOfJoining, setDateOfJoining] = useState<string>("");
@@ -128,11 +135,13 @@ export function ApplicationPopupModal() {
   const scrollBodyRef = useRef<HTMLDivElement>(null);
 
   const activeDomains =
-    programType === "internship"
-      ? internshipDomains
-      : programType === "workshops"
-        ? workshopTracks
-        : trainingDomains;
+    programType === "project_development"
+      ? projectDevelopmentDomains
+      : programType === "internship"
+        ? internshipDomains
+        : programType === "workshops"
+          ? workshopTracks
+          : trainingDomains;
 
   const filteredDomains = trackSearch.trim()
     ? activeDomains.filter(
@@ -147,13 +156,15 @@ export function ApplicationPopupModal() {
   useEffect(() => {
     const handleOpenModal = (e: Event) => {
       const customEvent = e as CustomEvent<{
-        type?: "training" | "internship" | "workshops";
+        type?: "project_development" | "training" | "internship" | "workshops";
         domainId?: string;
       }>;
       if (customEvent.detail?.type) {
         const type = customEvent.detail.type;
         setProgramType(type);
-        if (type === "internship") {
+        if (type === "project_development") {
+          setSelectedDomain("proj-genai");
+        } else if (type === "internship") {
           setSelectedDomain("int-web");
         } else if (type === "workshops") {
           setSelectedDomain("wks-ai");
@@ -200,10 +211,12 @@ export function ApplicationPopupModal() {
     scrollBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [step, isSuccess]);
 
-  const handleProgramChange = (type: "training" | "internship" | "workshops") => {
+  const handleProgramChange = (type: "project_development" | "training" | "internship" | "workshops") => {
     setProgramType(type);
     setTrackSearch("");
-    if (type === "internship") {
+    if (type === "project_development") {
+      setSelectedDomain("proj-genai");
+    } else if (type === "internship") {
       setSelectedDomain("int-web");
     } else if (type === "workshops") {
       setSelectedDomain("wks-ai");
@@ -274,10 +287,17 @@ export function ApplicationPopupModal() {
         }
       }
 
+      // Compatibility mapping for Supabase CHECK constraint
+      const dbProgramType =
+        programType === "project_development" ? "training" : programType;
+
       const { error: insertError } = await supabase.from("academy_applications").insert([
         {
-          program_type: programType,
-          domain_or_track: selectedDomainObj?.name || selectedDomain,
+          program_type: dbProgramType,
+          domain_or_track:
+            programType === "project_development"
+              ? `Project Development - ${selectedDomainObj?.name || selectedDomain}`
+              : selectedDomainObj?.name || selectedDomain,
           duration: duration,
           expected_joining_date: dateOfJoining,
           full_name: name,
@@ -498,8 +518,9 @@ export function ApplicationPopupModal() {
                         <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
                           1. Choose Program Type
                         </label>
-                        <div className="grid grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {[
+                            { id: "project_development", label: "Project Development Training", icon: Lightbulb },
                             { id: "internship", label: "Internship", icon: Briefcase },
                             { id: "training", label: "Training", icon: GraduationCap },
                             { id: "workshops", label: "Workshop", icon: CalendarDays },
@@ -512,17 +533,17 @@ export function ApplicationPopupModal() {
                                 type="button"
                                 onClick={() =>
                                   handleProgramChange(
-                                    tab.id as "training" | "internship" | "workshops"
+                                    tab.id as "project_development" | "training" | "internship" | "workshops"
                                   )
                                 }
-                                className={`p-3 rounded-xl border text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-2 text-xs sm:text-sm font-semibold ${
+                                className={`p-2.5 sm:p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 text-xs font-semibold ${
                                   active
                                     ? "border-primary bg-primary text-primary-foreground shadow-sm"
                                     : "border-border bg-background hover:bg-muted text-foreground"
                                 }`}
                               >
                                 <Icon className="w-4 h-4 shrink-0" />
-                                <span>{tab.label}</span>
+                                <span className="line-clamp-2 leading-tight">{tab.label}</span>
                               </button>
                             );
                           })}
@@ -534,11 +555,13 @@ export function ApplicationPopupModal() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
                           <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             2. Select{" "}
-                            {programType === "internship"
-                              ? "Internship Domain"
-                              : programType === "workshops"
-                                ? "Workshop Track"
-                                : "Training Program"}
+                            {programType === "project_development"
+                              ? "Project Domain"
+                              : programType === "internship"
+                                ? "Internship Domain"
+                                : programType === "workshops"
+                                  ? "Workshop Track"
+                                  : "Training Program"}
                           </label>
                           {activeDomains.length > 9 && (
                             <div className="relative w-full sm:w-52">

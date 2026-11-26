@@ -370,8 +370,15 @@ DROP POLICY IF EXISTS "Allow authenticated all on academy_applications" ON publi
 CREATE POLICY "Allow authenticated all on academy_applications" ON public.academy_applications FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 
--- ==============================================================================
--- 15. SITE SETTINGS TABLE (public.site_settings)
+-- Optional: Update CHECK constraint on academy_applications if present
+DO $$
+BEGIN
+    ALTER TABLE public.academy_applications DROP CONSTRAINT IF EXISTS academy_applications_program_type_check;
+    ALTER TABLE public.academy_applications ADD CONSTRAINT academy_applications_program_type_check 
+        CHECK (program_type IN ('internship', 'training', 'workshops', 'project_development'));
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.site_settings (
     id SERIAL PRIMARY KEY,
