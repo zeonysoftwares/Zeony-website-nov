@@ -359,3 +359,43 @@ VALUES
     ('Academy & Internship Mentors', 'Senior Engineering Coaches & Reviewers', 'Academy & Mentors', 'AM', '', 'Guides interns and workshop cohorts through live client repositories, pull request reviews, and career readiness.', '["Code Reviews", "Live Sprints", "Placement Prep"]'::jsonb, 7),
     ('Quality Assurance & SLA Support', 'Testing, Performance & Reliability Team', 'Cloud & AI', 'QA', '', 'Ensures every release passes automated verification, responsive device testing, and ongoing production monitoring.', '["E2E Testing", "Web Vitals", "24/7 SLA Support"]'::jsonb, 8)
 ON CONFLICT (title) DO UPDATE SET subtitle = EXCLUDED.subtitle, category = EXCLUDED.category, description = EXCLUDED.description, features = EXCLUDED.features;
+
+
+-- ==============================================================================
+-- 13. CONTACT INQUIRIES & LEADS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.contact_inquiries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(200) NOT NULL,
+    email VARCHAR(200) NOT NULL,
+    phone VARCHAR(50),
+    course_or_service VARCHAR(200),
+    message TEXT,
+    source VARCHAR(100) DEFAULT 'Website Contact Form',
+    extra_fields JSONB DEFAULT '{}'::jsonb,
+    status VARCHAR(50) DEFAULT 'new',
+    admin_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.contact_inquiries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read on contact_inquiries" ON public.contact_inquiries FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated all on contact_inquiries" ON public.contact_inquiries FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon all on contact_inquiries" ON public.contact_inquiries FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- ==============================================================================
+-- 14. ADMIN ACTIVITY AUDIT LOGS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.admin_activity_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    action VARCHAR(200) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    actor VARCHAR(150) DEFAULT 'Super Admin',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read on admin_activity_logs" ON public.admin_activity_logs FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated all on admin_activity_logs" ON public.admin_activity_logs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon all on admin_activity_logs" ON public.admin_activity_logs FOR ALL TO anon USING (true) WITH CHECK (true);

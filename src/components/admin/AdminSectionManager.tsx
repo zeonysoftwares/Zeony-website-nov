@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, RefreshCw, CheckCircle2, AlertCircle, X, Upload, Loader2, Edit } from "lucide-react";
 import { AdminItem, useAdminStore, AdminSectionKey } from "@/lib/adminStore";
 import { supabase } from "@/lib/supabase";
+import { logAdminActivity } from "@/lib/activityStore";
 
 type FieldValue =
   | string
@@ -120,8 +121,10 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
 
     if (editingId) {
       updateItem(editingId, itemData as Partial<AdminItem>);
+      logAdminActivity("Updated Content Item", "content", `Updated item "${itemData.title}" in ${title}`);
     } else {
       addItem(itemData as Omit<AdminItem, "id">);
+      logAdminActivity("Added Content Item", "content", `Added item "${itemData.title}" to ${title}`);
     }
     setIsModalOpen(false);
     setShowSuccessToast(true);
@@ -249,6 +252,7 @@ export default function AdminSectionManager({ sectionKey, title, subtitle, field
                     <button
                       onClick={() => {
                         deleteItem(item.id);
+                        logAdminActivity("Deleted Content Item", "content", `Deleted item "${item.title}" from ${title}`);
                         setDeleteIdConfirm(null);
                       }}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-md"

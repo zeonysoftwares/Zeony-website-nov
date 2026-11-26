@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,9 +9,27 @@ export async function POST(req: Request) {
     const data = await req.json();
     const { name, email, phone, course, message, source, extraFields } = data;
 
-    let subject = `New Inquiry from ${name}`;
+    // 1. Always attempt to store the inquiry in Supabase table "contact_inquiries"
+    try {
+      await supabase.from('contact_inquiries').insert([
+        {
+          name: name || 'Anonymous',
+          email: email || 'N/A',
+          phone: phone || null,
+          course_or_service: course || null,
+          message: message || '',
+          source: source || 'Website Contact Form',
+          extra_fields: extraFields || {},
+          status: 'new',
+        },
+      ]);
+    } catch (dbErr) {
+      console.warn('Could not insert inquiry into database:', dbErr);
+    }
+
+    let subject = `New Inquiry from ${name || 'Website Visitor'}`;
     if (source) {
-      subject = `[${source}] New Inquiry from ${name}`;
+      subject = `[${source}] New Inquiry from ${name || 'Website Visitor'}`;
     }
 
     let htmlBody = `
@@ -44,32 +63,28 @@ export async function POST(req: Request) {
 
     htmlBody += `<br/><hr/><p><small>Automated message sent from Zeony Technologies Website</small></p>`;
 
-    // Send the email using Resend
+    // 2. Send the email using Resend if credentials are present
     const resendApiKey = process.env.RESEND_API_KEY;
     const recipientEmail = process.env.SMTP_EMAIL;
-    if (!resendApiKey || !recipientEmail) {
-      return NextResponse.json(
-        { success: false, message: 'Email service is not configured on the server.' },
-        { status: 500 }
-      );
+    if (resendApiKey && recipientEmail) {
+      try {
+        const resend = new Resend(resendApiKey);
+        await resend.emails.send({
+          from: 'Zeony Technologies <notifications@zeonytechnologies.com>',
+          to: recipientEmail,
+          replyTo: email,
+          subject: subject,
+          html: htmlBody,
+        });
+      } catch (emailErr) {
+        console.warn('Resend email error (inquiry saved to database regardless):', emailErr);
+      }
     }
-    const resend = new Resend(resendApiKey);
 
-    // Important: Resend requires the "from" domain to be verified in their dashboard, or use onboarding@resend.dev
-    const { data: resendData, error } = await resend.emails.send({
-      from: 'Zeony Technologies <notifications@zeonytechnologies.com>',
-      to: recipientEmail, // Receive inquiries here
-      replyTo: email,
-      subject: subject,
-      html: htmlBody,
+    return NextResponse.json({
+      success: true,
+      message: 'Inquiry received successfully! Our team will contact you shortly.',
     });
-
-    if (error) {
-      console.error('Error sending email via Resend:', error);
-      return NextResponse.json({ success: false, message: 'Failed to send email.', error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, message: 'Email sent successfully!', data: resendData });
   } catch (error: unknown) {
     console.error('Error in contact route:', error);
     return NextResponse.json(

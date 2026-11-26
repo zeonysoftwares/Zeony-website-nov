@@ -26,9 +26,13 @@ import {
   Mail,
   CheckCircle2,
   UserCheck,
+  Inbox,
+  FolderOpen,
+  History,
 } from "lucide-react";
 import Image from "next/image";
 import { useAdminAuth } from "@/lib/adminStore";
+import { supabase } from "@/lib/supabase";
 
 type AuthView = "login" | "forgot-request" | "forgot-reset";
 
@@ -36,6 +40,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isLoggedIn, isChecking, login, logout } = useAdminAuth();
+
+  // Badge notification counts
+  const [pendingApps, setPendingApps] = useState(0);
+  const [newInquiries, setNewInquiries] = useState(0);
+
+  React.useEffect(() => {
+    if (!isLoggedIn) return;
+    const fetchCounts = async () => {
+      try {
+        const { count: appCount } = await supabase
+          .from("academy_applications")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending");
+        if (appCount !== null && appCount !== undefined) setPendingApps(appCount);
+      } catch {}
+
+      try {
+        const { count: inqCount } = await supabase
+          .from("contact_inquiries")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "new");
+        if (inqCount !== null && inqCount !== undefined) setNewInquiries(inqCount);
+      } catch {}
+    };
+
+    fetchCounts();
+    const handleUpdate = () => fetchCounts();
+    window.addEventListener("zeony_activity_updated", handleUpdate);
+    return () => window.removeEventListener("zeony_activity_updated", handleUpdate);
+  }, [isLoggedIn]);
 
   // Login state
   const [authView, setAuthView] = useState<AuthView>("login");
@@ -58,9 +92,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isResetting, setIsResetting] = useState(false);
 
   const menuItems = [
-    { label: "MAIN", isHeader: true },
+    { label: "OVERVIEW", isHeader: true },
     { name: "Dashboard", href: "/admin", icon: Home },
-    { label: "CONTENT", isHeader: true },
+    { name: "Activity Logs", href: "/admin/activity", icon: History },
+    { label: "INBOX & LEADS", isHeader: true },
+    { name: "Inquiries & Leads", href: "/admin/inquiries", icon: Inbox, badge: newInquiries },
+    { name: "Applications", href: "/admin/applications", icon: UserCheck, badge: pendingApps },
+    { label: "CONTENT MANAGEMENT", isHeader: true },
     { name: "Hero Slides", href: "/admin/hero", icon: ImageIcon },
     { name: "Services", href: "/admin/services", icon: Code2 },
     { name: "Products", href: "/admin/products", icon: Box },
@@ -72,8 +110,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
     { name: "Team Members", href: "/admin/team-members", icon: UserCheck },
     { name: "Featured Work", href: "/admin/featured-work", icon: Code2 },
-    { name: "Applications", href: "/admin/applications", icon: Users },
-    { label: "SETTINGS", isHeader: true },
+    { label: "ASSETS & SETTINGS", isHeader: true },
+    { name: "Media Library", href: "/admin/media", icon: FolderOpen },
     { name: "Site Settings", href: "/admin/settings", icon: Settings },
   ];
 
@@ -518,14 +556,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : "text-blue-100/70 hover:text-white hover:bg-blue-900/30"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <Icon
                     className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
                       isActive ? "text-white" : "text-blue-300/70"
                     }`}
                   />
-                  <span>{item.name}</span>
+                  <span className="truncate">{item.name}</span>
                 </div>
+                {typeof item.badge === "number" && item.badge > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white shadow-sm shrink-0">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
